@@ -3,6 +3,7 @@ import win32event
 import servicemanager
 import logging
 from watchdog.observers import Observer
+from watchdog.observers.api import EventQueue
 from watchdog.events import FileSystemEventHandler
 import time
 
@@ -10,13 +11,34 @@ logging.basicConfig(
     level=logging.INFO,  # Set the logging level (e.g., DEBUG, INFO, WARNING)
     format="%(asctime)s - %(levelname)s - %(message)s"  # Define the log message format
 )
-class ArXivPaperHandler(FileSystemEventHandler):
-
-    def on_created(self, event):
-        logging.info(f"file created: {event.src_path}")
-
+class ArXivFileTagger(FileSystemEventHandler):
+    def __init__(self):
+        super().__init__()
+        self.pending_crdownload_files = {}
+        self.timeout_threshold = 1.0
+    
+    def on_created(self,event):
+        if not event.is_directory and event.src_path.endswith('.crdownload'):
+            self.pending_crdownload_files[event.src_path] = time.time()
+    
     def on_moved(self, event):
-        logging.info(f"file moved from {event.src_path} to {event.dest_path}")
+        if not event.is_directory and event.src_path in self.pending_crdownload_files:
+            self.download_complete_callback(event.dest_path)
+            del self.pending_crdownload_files[event.src_path]
+
+        
+    def download_complete_callback(self,filepath):
+        # TODO: Put the rename and move logic here
+        logging.info(f'Download complete. Downloaded file path: {filepath}')
+
+    def _cleanup_stale_crdownload_files(self):
+        current_time = time.time()
+        self.pending_crdownload_files = {
+            path: timestamp
+            for path, timestamp in self.pending_crdownload_files.items()
+            if current_time - timestamp <= self.timeout_threshold
+        }
+            
 
 class ArxivTaggingService(win32serviceutil.ServiceFramework):
     _svc_name_ = "ArXivTaggingService"
@@ -45,7 +67,7 @@ if __name__ == "__main__":
     logging.info("app start")
 
     observer = Observer()
-    handler=ArXivPaperHandler()
+    handler=ArXivFileTagger()
     path = "C:\\Users\\Leems\\desktop"
     observer.schedule(event_handler=handler,path=path,recursive=False)
     
