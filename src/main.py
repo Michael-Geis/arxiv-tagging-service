@@ -2,13 +2,12 @@ import arxiv
 import logging
 import os
 
-##TODO: Configure logging
 
-def get_arxiv_metadata(file_name: str, client: arxiv.Client) -> dict[str,str] | None:
+def get_arxiv_metadata(filepath: str, client: arxiv.Client) -> dict[str,str] | None:
     """Takes a file name and returns the paper metadata if it is an arxiv paper. Otherwise, returns None
 
     Args:
-        file_name (str): Path of the form <filename>.<extension>
+        filepath (str): Path to the file to check
         client (arxiv.Client): Client used to query the arxiv api
 
     Returns:
@@ -16,9 +15,10 @@ def get_arxiv_metadata(file_name: str, client: arxiv.Client) -> dict[str,str] | 
     """
     
     # The basename will always correspond to an arxiv id if it is an arxiv paper
-    base_name = os.path.splitext(file_name)[0]
+    base_name = os.path.basename(filepath)
+    file_name = os.path.splitext(base_name)[0]
 
-    search = arxiv.Search(id_list=[base_name])
+    search = arxiv.Search(id_list=[file_name])
     try:
         result = next(client.results(search=search))
         logging.info(f'Found arXiv article corresponding to file "{file_name}".')
