@@ -8,6 +8,7 @@ pywin32 = "*"
 watchdog = "*"
 arxiv = "*"
 regex = "*"
+python-dotenv = "*"
 
 [dev-packages]
 

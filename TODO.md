@@ -16,6 +16,14 @@
 1. fully configurable file naming convention
 1. saving files in datetime subdirectories corresponding download date or posted date 
 1. saving files in subdirectories according to subject tag
+1. check for regular file moves -- e.g. if I move an arxiv pdf into the watched directory, it should recognize it and tag and move it.
+1. allow multiple watched directories
+1. add optional scanning of a given directory and tagging on startup
+1. One way to package this is as a CLI tool
+    - tagger cleanup-dir
+    - tagger watch
+    - tagger stop
+    - tagger add-watched-dir 
 
 ## naming strategies
 
