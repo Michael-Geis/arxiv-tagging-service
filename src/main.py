@@ -1,6 +1,3 @@
-import win32serviceutil
-import win32event
-import servicemanager
 import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -10,29 +7,18 @@ import time
 import arxiv
 from dotenv import load_dotenv
 
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level (e.g., DEBUG, INFO, WARNING)
-    format="%(asctime)s - %(levelname)s - %(message)s"  # Define the log message format
-)
-
-load_dotenv()
-for k,v in os.environ.items():
-    os.environ[k] = os.path.expandvars(v)
-
 class ArXivTagger:
     
-    def __init__(self,destination_dir):
-        self.destination_dir = destination_dir
-        if not os.path.exists(self.destination_dir):
-            logging.info(f'destination directory {destination_dir} not found, creating it instead.')
-            os.makedirs(destination_dir)
-        else:
-            logging.info(f'destination directory {destination_dir} found.')
+    def __init__(self,target_dir):
+        self.target_dir = target_dir
+        if not os.path.exists(self.target_dir):
+            logging.info(f'destination directory {target_dir} not found, creating it instead.')
+            os.makedirs(target_dir)
     
     def rename(self,source_path,metadata):
 
         new_basename = metadata['title'].lower().replace(' ','_')
-        target_path = os.path.join(self.destination_dir,f'{new_basename}.pdf')
+        target_path = os.path.join(self.target_dir,f'{new_basename}.pdf')
         if os.path.exists(source_path):
             shutil.move(source_path,target_path)
             logging.info(f'renamed {source_path} to {target_path}.')
@@ -47,16 +33,12 @@ class FileDownloadHandler(FileSystemEventHandler):
         self.pending_crdownload_files = {}
         self.timeout_threshold = 1.0
         self.client = arxiv.Client() # Does arxiv provide an api to pass in a logger?
-        self.arxiv_tagger = ArXivTagger(destination_dir=os.getenv('target_dir'))
-    
-    def on_created(self,event):
-        if not event.is_directory and event.src_path.endswith('.crdownload'):
-            self.pending_crdownload_files[event.src_path] = time.time()
+        self.arxiv_tagger = ArXivTagger(target_dir=os.getenv('TARGET_DIR'))
     
     def on_moved(self, event):
-        if not event.is_directory and event.src_path in self.pending_crdownload_files:
+        ## A download always ends with a temporary .crdownload file being moved to the final filepath
+        if not event.is_directory and event.src_path.endswith('.crdownload'):
             self.download_complete_callback(event.dest_path)
-            del self.pending_crdownload_files[event.src_path]
         
     def download_complete_callback(self,filepath):
 
@@ -111,39 +93,32 @@ class FileDownloadHandler(FileSystemEventHandler):
         return {'title': result.title, 'author_list': author_list, 'primary_category':result.primary_category}
             
 
-class ArxivTaggingService(win32serviceutil.ServiceFramework):
-    _svc_name_ = "ArXivTaggingService"
-    _svc_display_name = "ArXiv Tagger"
-    _svc_description_ = "This service automatically renames and moves downloaded arxiv articles according to a schema of your choice."
+if __name__ == "__main__":
 
-    def __init__(self, args) -> None:
-        super().__init__(args)
-        self.hWaitStop = win32event.CreateEvent(None,0,0,None)
-        self.running = True
-    
-    def SvcDoRun(self):
-        # Called when service starts
-        servicemanager.LogInfoMsg(f"{self._svc_name_} - Service is starting...")
-        self.main()
+    logging.basicConfig(
+        level=logging.INFO,  # Set the logging level (e.g., DEBUG, INFO, WARNING)
+        format="%(asctime)s - %(levelname)s - %(message)s"  # Define the log message format
+    )
+    logging.info("App start")
 
-    def SvcStop(self):
-        # Called when service stops
-        pass
+    load_dotenv()
+    for k,v in os.environ.items():
+        os.environ[k] = os.path.expandvars(v)
 
-    
-    def main(self) -> None:
-        pass
+    observer = Observer()
+    handler=FileDownloadHandler()
+    SOURCE_DIR = os.getenv('SOURCE_DIR')
+    observer.schedule(event_handler=handler,path=SOURCE_DIR,recursive=False)
 
-logging.info("app start")
-observer = Observer()
-handler=FileDownloadHandler()
-SOURCE_DIR = os.getenv('SOURCE_DIR')
-observer.schedule(event_handler=handler,path=SOURCE_DIR,recursive=False)
-
-logging.info(f'monitoring changes in dir {SOURCE_DIR}')
-observer.start()
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    observer.stop()
+    logging.info(f'monitoring changes in dir {SOURCE_DIR}')
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt as e:
+        logging.info('User killed the process.')
+        observer.stop()
+        observer.join()
+    except Exception:
+        observer.stop()
+        observer.join()
