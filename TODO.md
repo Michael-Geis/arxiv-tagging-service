@@ -5,6 +5,11 @@
 - Observer.start() creates a separate thread (a Daemon thread?) using python's threading library under the hood.
 - I need to figure out how to control this
 
+## DownloadHandler code likely needs to be changed.
+
+- I need to look into browser-independent ways of detecting when a file has been downloaded in a certain directory
+- My original implementation already broke somehow
+
 ## configuration
 
 1. add gui to set configuration on service startup
