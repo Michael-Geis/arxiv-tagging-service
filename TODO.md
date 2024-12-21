@@ -5,6 +5,28 @@
 - Observer.start() creates a separate thread (a Daemon thread?) using python's threading library under the hood.
 - I need to figure out how to control this
 
+## arxiv id format
+
+### After April 2007 (Inclusive)
+
+YYMM.number
+up to 1412 number is zero-padded to 4 digits
+after 1501 number is zero-padded to 5 digits
+
+### Before March 2007
+YYMM[number]
+number is 3 digits and there is not dot
+
+### General pattern
+
+YY ranges from 91 to current year -- we can just say it's a two digit number
+MM ranges from 01 to 12
+this is optionally followed by a dot and then a number
+
+'\d{4}\.\d{4,5}'
+'\d{7}'
+
+
 ## DownloadHandler code likely needs to be changed.
 
 - I need to look into browser-independent ways of detecting when a file has been downloaded in a certain directory
