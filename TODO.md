@@ -1,5 +1,10 @@
 # List of all features that need to be added
 
+## Threading Issue
+
+- Observer.start() creates a separate thread (a Daemon thread?) using python's threading library under the hood.
+- I need to figure out how to control this
+
 ## configuration
 
 1. add gui to set configuration on service startup
